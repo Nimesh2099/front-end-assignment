@@ -3,6 +3,7 @@ class SlotMachineGame {
     constructor() {
         this.initializeApp();
         this.initLoader();
+        this.loadAssets();
     }
 
     initializeApp() {
@@ -17,6 +18,36 @@ class SlotMachineGame {
 
         // Add the canvas element to the HTML body
         document.body.appendChild(this.app.view);
+    }
+
+    async loadAssets() {
+        const assetManifest = {
+            "hv1": "assets/hv1_symbol.png",
+            "hv2": "assets/hv2_symbol.png",
+            "hv3": "assets/hv3_symbol.png",
+            "hv4": "assets/hv4_symbol.png",
+            "lv1": "assets/lv1_symbol.png",
+            "lv2": "assets/lv2_symbol.png",
+            "lv3": "assets/lv3_symbol.png",
+            "lv4": "assets/lv4_symbol.png",
+            "spinButton": "assets/spin_button.png",
+        };
+
+        try{
+            PIXI.Assets.addBundle('gameAssets', assetManifest);
+
+            //load with progress callback
+            this.assets = await PIXI.Assets.loadBundle('gameAssets', (progress) => {
+                this.loaderText.text = `Loading: ${Math.floor(progress * 100)}%`;
+            });
+
+            //When done, flag as loaded
+            this.loaded = true;
+            
+        } catch (error) {
+            console.error('Error loading assets:', error);
+            this.loaderText.text = 'Error loading assets';
+        }
     }
 
     initLoader() {
@@ -44,6 +75,7 @@ class SlotMachineGame {
         //center the loader text
         this.centerLoader();
     }
+
     centerLoader() {
         //center the loader text in the middle of the screen
         this.loaderContainer.x = this.app.screen.width / 2;
