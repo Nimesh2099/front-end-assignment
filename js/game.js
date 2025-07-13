@@ -4,6 +4,9 @@ class SlotMachineGame {
         this.initializeApp();
         this.initLoader();
         this.loadAssets();
+
+        window.addEventListener('resize', () => this.onResize());
+        this.onResize();
     }
 
     initializeApp() {
@@ -20,6 +23,7 @@ class SlotMachineGame {
         document.body.appendChild(this.app.view);
     }
 
+    // Load assets required for the game
     async loadAssets() {
         const assetManifest = {
             "hv1": "assets/hv1_symbol.png",
@@ -43,6 +47,7 @@ class SlotMachineGame {
 
             //When done, flag as loaded
             this.loaded = true;
+            this.setupGame();
             
         } catch (error) {
             console.error('Error loading assets:', error);
@@ -75,6 +80,99 @@ class SlotMachineGame {
         //center the loader text
         this.centerLoader();
     }
+
+    setupGame(){
+        this.app.stage.removeChild(this.loaderContainer);
+        this.loaderContainer.destroy();
+
+        this.createGameContainer();
+        this.createReels();
+        this.createSpinButton();
+        this.createWinDisplay();
+
+        //his.updateSymbols();
+        this.centerGame();
+        
+    }
+
+    createGameContainer() {
+        this.gameContainer = new PIXI.Container();
+        this.app.stage.addChild(this.gameContainer);
+    }
+
+    createReels() {
+        const reelWidth = 120;
+        const symbolHeight = 120;
+        const gap = 20;
+
+        this.symbols = [];
+
+        for (let col = 0; col < 5; col++) {
+            this.symbols[col] = [];
+
+            for (let row = 0; row < 3; row++) {
+            const symbol = new PIXI.Sprite();
+            symbol.anchor.set(0.5);
+            symbol.width = reelWidth - 10;
+            symbol.height = symbolHeight - 10;
+            symbol.x = col * (reelWidth + gap);
+            symbol.y = row * symbolHeight;
+            this.gameContainer.addChild(symbol);
+            this.symbols[col][row] = symbol;
+            }
+        }
+    }
+
+    createSpinButton() {
+        this.spinButton = new PIXI.Sprite(this.assets.spinButton);
+        this.spinButton.anchor.set(0.5);
+        this.spinButton.interactive = true;
+        this.spinButton.buttonMode = true;
+
+        this.spinButton.on('pointerdown', () => this.handleSpin());
+        this.gameContainer.addChild(this.spinButton);
+    }
+
+    createWinDisplay() {
+        this.winText = new PIXI.Text('', {
+            fontFamily: 'Arial',
+            fontSize: 24,
+            fill: 0xffffff,
+            align: 'left',
+            wordWrap: true,
+            wordWrapWidth: 500
+        });
+        this.winText.anchor.set(0.5, 0);
+        this.gameContainer.addChild(this.winText);
+    }
+
+    centerGame() {
+    if (!this.gameContainer) return;
+
+        this.gameContainer.x = this.app.screen.width / 2 - this.gameContainer.width / 2;
+        this.gameContainer.y = this.app.screen.height * 0.1;
+
+        // Position spin button
+        this.spinButton.x = this.gameContainer.width / 2;
+        this.spinButton.y = 3 * 120 + 50;
+
+        // Position win text
+        this.winText.x = this.gameContainer.width / 2;
+        this.winText.y = this.spinButton.y + this.spinButton.height / 2 + 30;
+        this.winText.style.wordWrapWidth = Math.min(500, window.innerWidth * 0.8);
+    }
+
+    onResize() {
+        this.app.renderer.resize(window.innerWidth, window.innerHeight);
+
+        if (this.loaded) {
+            this.centerGame();
+        } else {
+            this.centerLoader();
+        }
+    }
+    
+
 
     centerLoader() {
         //center the loader text in the middle of the screen
