@@ -2,6 +2,8 @@
 class SlotMachineGame {
     constructor() {
         this.initializeApp();
+        this.setupGameState();
+
         this.initLoader();
         this.loadAssets();
 
@@ -86,22 +88,6 @@ class SlotMachineGame {
         this.app.stage.removeChild(this.loaderContainer);
         this.loaderContainer.destroy();
 
-        this.currentPositions = [0, 0, 0, 0, 0];
-
-        this.reelset = [
-            ["hv2", "lv3", "lv3", "hv1", "hv1", "lv1", "hv1", "hv4", "lv1", "hv3", 
-            "hv2", "hv3", "lv4", "hv4", "lv1", "hv2", "lv4", "lv1", "lv3", "hv2"],
-            ["hv1", "lv2", "lv3", "lv2", "lv1", "lv1", "lv4", "lv1", "lv1", "hv4", 
-            "lv3", "hv2", "lv1", "lv3", "hv1", "lv1", "lv2", "lv4", "lv3", "lv2"],
-            ["lv1", "hv2", "lv3", "lv4", "hv3", "hv2", "lv2", "hv2", "hv2", "lv1", 
-            "hv3", "lv1", "hv1", "lv2", "hv3", "hv2", "hv4", "hv1", "lv2", "lv4"],
-            ["hv2", "lv2", "hv3", "lv2", "lv4", "lv4", "hv3", "lv2", "lv4", "hv1", 
-            "lv1", "hv1", "lv2", "hv3", "lv2", "lv3", "hv2", "lv1", "hv3", "lv2"],
-            ["lv3", "lv4", "hv2", "hv3", "hv4", "hv1", "hv3", "hv2", "hv2", "hv4", 
-            "hv4", "hv2", "lv2", "hv4", "hv1", "lv2", "hv1", "lv2", "hv4", "lv4"]
-        ];
-
-        
         this.createGameContainer();
         this.createReels();
         this.createSpinButton();
@@ -114,6 +100,50 @@ class SlotMachineGame {
 
         
     }
+
+    setupGameState() {
+    this.loaded = false;
+    this.spinning = false;
+    this.assets = {};
+    //this.currentPositions = [0, 0, 0, 0, 0];
+    this.currentPositions = [0, 11, 1, 10, 14];
+
+
+    this.reelset = [
+        ["hv2", "lv3", "lv3", "hv1", "hv1", "lv1", "hv1", "hv4", "lv1", "hv3", 
+         "hv2", "hv3", "lv4", "hv4", "lv1", "hv2", "lv4", "lv1", "lv3", "hv2"],
+        ["hv1", "lv2", "lv3", "lv2", "lv1", "lv1", "lv4", "lv1", "lv1", "hv4", 
+         "lv3", "hv2", "lv1", "lv3", "hv1", "lv1", "lv2", "lv4", "lv3", "lv2"],
+        ["lv1", "hv2", "lv3", "lv4", "hv3", "hv2", "lv2", "hv2", "hv2", "lv1", 
+         "hv3", "lv1", "hv1", "lv2", "hv3", "hv2", "hv4", "hv1", "lv2", "lv4"],
+        ["hv2", "lv2", "hv3", "lv2", "lv4", "lv4", "hv3", "lv2", "lv4", "hv1", 
+         "lv1", "hv1", "lv2", "hv3", "lv2", "lv3", "hv2", "lv1", "hv3", "lv2"],
+        ["lv3", "lv4", "hv2", "hv3", "hv4", "hv1", "hv3", "hv2", "hv2", "hv4", 
+         "hv4", "hv2", "lv2", "hv4", "hv1", "lv2", "hv1", "lv2", "hv4", "lv4"]
+    ];
+
+    this.paytable = {
+        hv1: [10, 20, 50],
+        hv2: [5, 10, 20],
+        hv3: [5, 10, 15],
+        hv4: [5, 10, 15],
+        lv1: [2, 5, 10],
+        lv2: [1, 2, 5],
+        lv3: [1, 2, 3],
+        lv4: [1, 2, 3]
+    };
+
+    this.paylines = [
+        [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]],
+        [[0, 1], [1, 1], [2, 1], [3, 1], [4, 1]],
+        [[0, 2], [1, 2], [2, 2], [3, 2], [4, 2]],
+        [[0, 1], [1, 1], [2, 2], [3, 2], [4, 2]],
+        [[0, 2], [1, 2], [2, 1], [3, 1], [4, 1]],
+        [[0, 1], [1, 2], [2, 1], [3, 2], [4, 1]],
+        [[0, 2], [1, 1], [2, 2], [3, 1], [4, 2]]
+    ];
+}
+
 
     createGameContainer() {
         this.gameContainer = new PIXI.Container();
@@ -203,6 +233,7 @@ class SlotMachineGame {
         }
 
         this.updateSymbols();
+        this.calculateWins();
 
         this.spinning = false;
     }
@@ -219,6 +250,62 @@ class SlotMachineGame {
             }
         }
     }
+
+    getSymbolAt(col, row) {
+        const reel = this.reelset[col];
+        const position = this.currentPositions[col];
+        const symbolIndex = (position + row) % reel.length;
+        return reel[symbolIndex];
+    }
+
+    calculateWins() {
+        const wins = [];
+        let totalWin = 0;
+
+        for (let i = 0; i < this.paylines.length; i++) {
+            const payline = this.paylines[i];
+            const firstSymbol = this.getSymbolAt(payline[0][0], payline[0][1]);
+            let matchCount = 1;
+
+            for (let j = 1; j < payline.length; j++) {
+                const symbol = this.getSymbolAt(payline[j][0], payline[j][1]);
+                if (symbol === firstSymbol) {
+                    matchCount++;
+                } else {
+                    break;
+                }
+            }
+
+            if (matchCount >= 3 && this.paytable[firstSymbol]) {
+                const payout = this.paytable[firstSymbol][matchCount - 3];
+                totalWin += payout;
+                wins.push({
+                    payline: i + 1,
+                    symbol: firstSymbol,
+                    count: matchCount,
+                    payout
+                });
+            }
+        }
+
+        this.updateWinDisplay(totalWin, wins);
+    }
+
+    updateWinDisplay(totalWin, wins) {
+        if (totalWin === 0) {
+            this.winText.text = "No wins this spin";
+            return;
+        }
+
+        let winText = `Total wins: ${totalWin}\n`;
+
+        wins.forEach(win => {
+            winText += `- payline ${win.payline}, ${win.symbol} x${win.count}, ${win.payout}\n`;
+        });
+
+        this.winText.text = winText;
+    }
+
 
     centerLoader() {
         //center the loader text in the middle of the screen
