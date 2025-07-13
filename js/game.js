@@ -9,6 +9,7 @@ class SlotMachineGame {
         this.onResize();
     }
 
+
     initializeApp() {
         // Create a new PIXI Application with screen size and quality settings
         this.app = new PIXI.Application({
@@ -85,13 +86,32 @@ class SlotMachineGame {
         this.app.stage.removeChild(this.loaderContainer);
         this.loaderContainer.destroy();
 
+        this.currentPositions = [0, 0, 0, 0, 0];
+
+        this.reelset = [
+            ["hv2", "lv3", "lv3", "hv1", "hv1", "lv1", "hv1", "hv4", "lv1", "hv3", 
+            "hv2", "hv3", "lv4", "hv4", "lv1", "hv2", "lv4", "lv1", "lv3", "hv2"],
+            ["hv1", "lv2", "lv3", "lv2", "lv1", "lv1", "lv4", "lv1", "lv1", "hv4", 
+            "lv3", "hv2", "lv1", "lv3", "hv1", "lv1", "lv2", "lv4", "lv3", "lv2"],
+            ["lv1", "hv2", "lv3", "lv4", "hv3", "hv2", "lv2", "hv2", "hv2", "lv1", 
+            "hv3", "lv1", "hv1", "lv2", "hv3", "hv2", "hv4", "hv1", "lv2", "lv4"],
+            ["hv2", "lv2", "hv3", "lv2", "lv4", "lv4", "hv3", "lv2", "lv4", "hv1", 
+            "lv1", "hv1", "lv2", "hv3", "lv2", "lv3", "hv2", "lv1", "hv3", "lv2"],
+            ["lv3", "lv4", "hv2", "hv3", "hv4", "hv1", "hv3", "hv2", "hv2", "hv4", 
+            "hv4", "hv2", "lv2", "hv4", "hv1", "lv2", "hv1", "lv2", "hv4", "lv4"]
+        ];
+
+        
         this.createGameContainer();
         this.createReels();
         this.createSpinButton();
         this.createWinDisplay();
 
-        //his.updateSymbols();
+        this.updateSymbols();
         this.centerGame();
+
+        
+
         
     }
 
@@ -171,8 +191,34 @@ class SlotMachineGame {
             this.centerLoader();
         }
     }
-    
 
+    handleSpin() {
+        if (this.spinning) return;
+
+        this.spinning = true;
+
+        // Generate random symbol positions for each reel
+        for (let i = 0; i < 5; i++) {
+            this.currentPositions[i] = Math.floor(Math.random() * this.reelset[i].length);
+        }
+
+        this.updateSymbols();
+
+        this.spinning = false;
+    }
+
+    updateSymbols() {
+        for (let col = 0; col < 5; col++) {
+            const reel = this.reelset[col];
+            const position = this.currentPositions[col];
+
+            for (let row = 0; row < 3; row++) {
+                const symbolIndex = (position + row) % reel.length;
+                const symbolId = reel[symbolIndex];
+                this.symbols[col][row].texture = this.assets[symbolId];
+            }
+        }
+    }
 
     centerLoader() {
         //center the loader text in the middle of the screen
