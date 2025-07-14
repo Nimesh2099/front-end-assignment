@@ -1,32 +1,46 @@
-// SlotMachineGame class will manage all the game's logic and visuals
 class SlotMachineGame {
+    // Constants for easy tweaking
+    static REEL_WIDTH = 120;
+    static SYMBOL_HEIGHT = 120;
+    static GAP = 20;
+    static SPIN_ANIMATION_DURATION = 2000; // ms
+    static SPIN_STEP_DELAY = 100; // ms
+
     constructor() {
         this.initializeApp();
         this.setupGameState();
-
         this.initLoader();
         this.loadAssets();
 
-        window.addEventListener('resize', () => this.onResize());
+        window.addEventListener('resize', this.debounce(() => this.onResize(), 150));
+        window.addEventListener('keydown', (e) => {
+            if ((e.code === 'Space' || e.code === 'Enter') && !this.spinning) {
+                this.handleSpin();
+            }
+        });
         this.onResize();
     }
 
+    debounce(func, wait) {
+        let timeout;
+        return () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func(), wait);
+        };
+    }
 
     initializeApp() {
-        // Create a new PIXI Application with screen size and quality settings
         this.app = new PIXI.Application({
-            width: window.innerWidth, 
-            height: window.innerHeight, 
-            backgroundColor: 0x1099bb, 
-            resolution: window.devicePixelRatio || 1, 
-            autoDensity: true 
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: 0x1099bb,
+            resolution: window.devicePixelRatio || 1,
+            autoDensity: true
         });
 
-        // Add the canvas element to the HTML body
         document.body.appendChild(this.app.view);
     }
 
-    // Load assets required for the game
     async loadAssets() {
         const assetManifest = {
             "hv1": "assets/hv1_symbol.png",
@@ -40,18 +54,16 @@ class SlotMachineGame {
             "spinButton": "assets/spin_button.png",
         };
 
-        try{
+        try {
             PIXI.Assets.addBundle('gameAssets', assetManifest);
 
-            //load with progress callback
             this.assets = await PIXI.Assets.loadBundle('gameAssets', (progress) => {
                 this.loaderText.text = `Loading: ${Math.floor(progress * 100)}%`;
             });
 
-            //When done, flag as loaded
             this.loaded = true;
             this.setupGame();
-            
+
         } catch (error) {
             console.error('Error loading assets:', error);
             this.loaderText.text = 'Error loading assets';
@@ -59,18 +71,15 @@ class SlotMachineGame {
     }
 
     initLoader() {
-        //create a container for the loader elements
         this.loaderContainer = new PIXI.Container();
         this.app.stage.addChild(this.loaderContainer);
 
-        //background ractangle behind the loader text
         const loaderbg = new PIXI.Graphics()
             .beginFill(0x0a0a3a, 0.8)
             .drawRoundedRect(-150, -50, 300, 100, 15)
             .endFill();
         this.loaderContainer.addChild(loaderbg);
 
-        //create centered text
         this.loaderText = new PIXI.Text('Loading: 0%', {
             fontFamily: 'Arial',
             fontSize: 28,
@@ -80,11 +89,10 @@ class SlotMachineGame {
         this.loaderText.anchor.set(0.5);
         this.loaderContainer.addChild(this.loaderText);
 
-        //center the loader text
         this.centerLoader();
     }
 
-    setupGame(){
+    setupGame() {
         this.app.stage.removeChild(this.loaderContainer);
         this.loaderContainer.destroy();
 
@@ -95,55 +103,48 @@ class SlotMachineGame {
 
         this.updateSymbols();
         this.centerGame();
-
-        
-
-        
     }
 
     setupGameState() {
-    this.loaded = false;
-    this.spinning = false;
-    this.assets = {};
-    //this.currentPositions = [0, 0, 0, 0, 0];
-    this.currentPositions = [0, 11, 1, 10, 14];
+        this.loaded = false;
+        this.spinning = false;
+        this.assets = {};
+        this.currentPositions = [0, 11, 1, 10, 14];
 
+        this.reelset = [
+            ["hv2", "lv3", "lv3", "hv1", "hv1", "lv1", "hv1", "hv4", "lv1", "hv3",
+                "hv2", "hv3", "lv4", "hv4", "lv1", "hv2", "lv4", "lv1", "lv3", "hv2"],
+            ["hv1", "lv2", "lv3", "lv2", "lv1", "lv1", "lv4", "lv1", "lv1", "hv4",
+                "lv3", "hv2", "lv1", "lv3", "hv1", "lv1", "lv2", "lv4", "lv3", "lv2"],
+            ["lv1", "hv2", "lv3", "lv4", "hv3", "hv2", "lv2", "hv2", "hv2", "lv1",
+                "hv3", "lv1", "hv1", "lv2", "hv3", "hv2", "hv4", "hv1", "lv2", "lv4"],
+            ["hv2", "lv2", "hv3", "lv2", "lv4", "lv4", "hv3", "lv2", "lv4", "hv1",
+                "lv1", "hv1", "lv2", "hv3", "lv2", "lv3", "hv2", "lv1", "hv3", "lv2"],
+            ["lv3", "lv4", "hv2", "hv3", "hv4", "hv1", "hv3", "hv2", "hv2", "hv4",
+                "hv4", "hv2", "lv2", "hv4", "hv1", "lv2", "hv1", "lv2", "hv4", "lv4"]
+        ];
 
-    this.reelset = [
-        ["hv2", "lv3", "lv3", "hv1", "hv1", "lv1", "hv1", "hv4", "lv1", "hv3", 
-         "hv2", "hv3", "lv4", "hv4", "lv1", "hv2", "lv4", "lv1", "lv3", "hv2"],
-        ["hv1", "lv2", "lv3", "lv2", "lv1", "lv1", "lv4", "lv1", "lv1", "hv4", 
-         "lv3", "hv2", "lv1", "lv3", "hv1", "lv1", "lv2", "lv4", "lv3", "lv2"],
-        ["lv1", "hv2", "lv3", "lv4", "hv3", "hv2", "lv2", "hv2", "hv2", "lv1", 
-         "hv3", "lv1", "hv1", "lv2", "hv3", "hv2", "hv4", "hv1", "lv2", "lv4"],
-        ["hv2", "lv2", "hv3", "lv2", "lv4", "lv4", "hv3", "lv2", "lv4", "hv1", 
-         "lv1", "hv1", "lv2", "hv3", "lv2", "lv3", "hv2", "lv1", "hv3", "lv2"],
-        ["lv3", "lv4", "hv2", "hv3", "hv4", "hv1", "hv3", "hv2", "hv2", "hv4", 
-         "hv4", "hv2", "lv2", "hv4", "hv1", "lv2", "hv1", "lv2", "hv4", "lv4"]
-    ];
+        this.paytable = {
+            hv1: [10, 20, 50],
+            hv2: [5, 10, 20],
+            hv3: [5, 10, 15],
+            hv4: [5, 10, 15],
+            lv1: [2, 5, 10],
+            lv2: [1, 2, 5],
+            lv3: [1, 2, 3],
+            lv4: [1, 2, 3]
+        };
 
-    this.paytable = {
-        hv1: [10, 20, 50],
-        hv2: [5, 10, 20],
-        hv3: [5, 10, 15],
-        hv4: [5, 10, 15],
-        lv1: [2, 5, 10],
-        lv2: [1, 2, 5],
-        lv3: [1, 2, 3],
-        lv4: [1, 2, 3]
-    };
-
-    this.paylines = [
-        [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]],
-        [[0, 1], [1, 1], [2, 1], [3, 1], [4, 1]],
-        [[0, 2], [1, 2], [2, 2], [3, 2], [4, 2]],
-        [[0, 1], [1, 1], [2, 2], [3, 2], [4, 2]],
-        [[0, 2], [1, 2], [2, 1], [3, 1], [4, 1]],
-        [[0, 1], [1, 2], [2, 1], [3, 2], [4, 1]],
-        [[0, 2], [1, 1], [2, 2], [3, 1], [4, 2]]
-    ];
-}
-
+        this.paylines = [
+            [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]],
+            [[0, 1], [1, 1], [2, 1], [3, 1], [4, 1]],
+            [[0, 2], [1, 2], [2, 2], [3, 2], [4, 2]],
+            [[0, 1], [1, 1], [2, 2], [3, 2], [4, 2]],
+            [[0, 2], [1, 2], [2, 1], [3, 1], [4, 1]],
+            [[0, 1], [1, 2], [2, 1], [3, 2], [4, 1]],
+            [[0, 2], [1, 1], [2, 2], [3, 1], [4, 2]]
+        ];
+    }
 
     createGameContainer() {
         this.gameContainer = new PIXI.Container();
@@ -151,24 +152,20 @@ class SlotMachineGame {
     }
 
     createReels() {
-        const reelWidth = 120;
-        const symbolHeight = 120;
-        const gap = 20;
-
         this.symbols = [];
 
         for (let col = 0; col < 5; col++) {
             this.symbols[col] = [];
 
             for (let row = 0; row < 3; row++) {
-            const symbol = new PIXI.Sprite();
-            symbol.anchor.set(0.5);
-            symbol.width = reelWidth - 10;
-            symbol.height = symbolHeight - 10;
-            symbol.x = col * (reelWidth + gap);
-            symbol.y = row * symbolHeight;
-            this.gameContainer.addChild(symbol);
-            this.symbols[col][row] = symbol;
+                const symbol = new PIXI.Sprite();
+                symbol.anchor.set(0.5);
+                symbol.width = SlotMachineGame.REEL_WIDTH - 10;
+                symbol.height = SlotMachineGame.SYMBOL_HEIGHT - 10;
+                symbol.x = col * (SlotMachineGame.REEL_WIDTH + SlotMachineGame.GAP);
+                symbol.y = row * SlotMachineGame.SYMBOL_HEIGHT;
+                this.gameContainer.addChild(symbol);
+                this.symbols[col][row] = symbol;
             }
         }
     }
@@ -197,16 +194,14 @@ class SlotMachineGame {
     }
 
     centerGame() {
-    if (!this.gameContainer) return;
+        if (!this.gameContainer) return;
 
         this.gameContainer.x = this.app.screen.width / 2 - this.gameContainer.width / 2;
         this.gameContainer.y = this.app.screen.height * 0.1;
 
-        // Position spin button
         this.spinButton.x = this.gameContainer.width / 2;
-        this.spinButton.y = 3 * 120 + 50;
+        this.spinButton.y = 3 * SlotMachineGame.SYMBOL_HEIGHT + 50;
 
-        // Position win text
         this.winText.x = this.gameContainer.width / 2;
         this.winText.y = this.spinButton.y + this.spinButton.height / 2 + 30;
         this.winText.style.wordWrapWidth = Math.min(500, window.innerWidth * 0.8);
@@ -222,16 +217,22 @@ class SlotMachineGame {
         }
     }
 
-    handleSpin() {
+    async handleSpin() {
         if (this.spinning) return;
-
         this.spinning = true;
 
-        // Generate random symbol positions for each reel
+        const spinStart = performance.now();
+        while (performance.now() - spinStart < SlotMachineGame.SPIN_ANIMATION_DURATION) {
+            for (let i = 0; i < 5; i++) {
+                this.currentPositions[i] = (this.currentPositions[i] + 1) % this.reelset[i].length;
+            }
+            this.updateSymbols();
+            await new Promise(r => setTimeout(r, SlotMachineGame.SPIN_STEP_DELAY));
+        }
+
         for (let i = 0; i < 5; i++) {
             this.currentPositions[i] = Math.floor(Math.random() * this.reelset[i].length);
         }
-
         this.updateSymbols();
         this.calculateWins();
 
@@ -246,7 +247,12 @@ class SlotMachineGame {
             for (let row = 0; row < 3; row++) {
                 const symbolIndex = (position + row) % reel.length;
                 const symbolId = reel[symbolIndex];
-                this.symbols[col][row].texture = this.assets[symbolId];
+                const texture = this.assets[symbolId];
+                if (texture) {
+                    this.symbols[col][row].texture = texture;
+                } else {
+                    console.warn(`Missing texture for symbol: ${symbolId}`);
+                }
             }
         }
     }
@@ -259,41 +265,38 @@ class SlotMachineGame {
     }
 
     calculateWins() {
-    let totalWin = 0;
-    let results = [];
+        let totalWin = 0;
+        let results = [];
 
-    for (let i = 0; i < this.paylines.length; i++) {
-        const payline = this.paylines[i];
-        const firstSymbol = this.getSymbolAt(payline[0][0], payline[0][1]);
-        let count = 1;
+        for (let i = 0; i < this.paylines.length; i++) {
+            const payline = this.paylines[i];
+            const firstSymbol = this.getSymbolAt(payline[0][0], payline[0][1]);
+            let count = 1;
 
-        // Count how many matching symbols (from left to right)
-        for (let j = 1; j < payline.length; j++) {
-            const currentSymbol = this.getSymbolAt(payline[j][0], payline[j][1]);
-            if (currentSymbol === firstSymbol) {
-                count++;
-            } else {
-                break;
+            for (let j = 1; j < payline.length; j++) {
+                const currentSymbol = this.getSymbolAt(payline[j][0], payline[j][1]);
+                if (currentSymbol === firstSymbol) {
+                    count++;
+                } else {
+                    break;
+                }
+            }
+
+            if (count >= 3 && this.paytable[firstSymbol]) {
+                const payout = this.paytable[firstSymbol][count - 3];
+                totalWin += payout;
+
+                results.push({
+                    payline: i + 1,
+                    symbol: firstSymbol,
+                    count,
+                    payout
+                });
             }
         }
 
-        // If 3+ matching symbols found and symbol has a payout
-        if (count >= 3 && this.paytable[firstSymbol]) {
-            const payout = this.paytable[firstSymbol][count - 3];
-            totalWin += payout;
-
-            results.push({
-                payline: i + 1,
-                symbol: firstSymbol,
-                count,
-                payout
-            });
-        }
+        this.updateWinDisplay(totalWin, results);
     }
-
-    this.updateWinDisplay(totalWin, results);
-}
-
 
     updateWinDisplay(totalWin, results) {
         if (results.length === 0) {
@@ -301,19 +304,18 @@ class SlotMachineGame {
             return;
         }
 
-        let display = `Total wins: ${totalWin}\n`;
+        let display = `Total wins: ${totalWin}\n\n`;
 
         results.forEach(result => {
-            display += `- payline ${result.payline}, ${result.symbol} x${result.count}, ${result.payout}\n`;
+            display += `Payline ${result.payline}: ${result.symbol} x${result.count} → ${result.payout} credits\n`;
         });
 
         this.winText.text = display.trim();
+
+        this.winText.style.fontSize = this.winText.height > 150 ? 18 : 24;
     }
 
-
-
     centerLoader() {
-        //center the loader text in the middle of the screen
         this.loaderContainer.x = this.app.screen.width / 2;
         this.loaderContainer.y = this.app.screen.height / 2;
     }
