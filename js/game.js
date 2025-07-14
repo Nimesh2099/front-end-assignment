@@ -259,52 +259,57 @@ class SlotMachineGame {
     }
 
     calculateWins() {
-        const wins = [];
-        let totalWin = 0;
+    let totalWin = 0;
+    let results = [];
 
-        for (let i = 0; i < this.paylines.length; i++) {
-            const payline = this.paylines[i];
-            const firstSymbol = this.getSymbolAt(payline[0][0], payline[0][1]);
-            let matchCount = 1;
+    for (let i = 0; i < this.paylines.length; i++) {
+        const payline = this.paylines[i];
+        const firstSymbol = this.getSymbolAt(payline[0][0], payline[0][1]);
+        let count = 1;
 
-            for (let j = 1; j < payline.length; j++) {
-                const symbol = this.getSymbolAt(payline[j][0], payline[j][1]);
-                if (symbol === firstSymbol) {
-                    matchCount++;
-                } else {
-                    break;
-                }
-            }
-
-            if (matchCount >= 3 && this.paytable[firstSymbol]) {
-                const payout = this.paytable[firstSymbol][matchCount - 3];
-                totalWin += payout;
-                wins.push({
-                    payline: i + 1,
-                    symbol: firstSymbol,
-                    count: matchCount,
-                    payout
-                });
+        // Count how many matching symbols (from left to right)
+        for (let j = 1; j < payline.length; j++) {
+            const currentSymbol = this.getSymbolAt(payline[j][0], payline[j][1]);
+            if (currentSymbol === firstSymbol) {
+                count++;
+            } else {
+                break;
             }
         }
 
-        this.updateWinDisplay(totalWin, wins);
+        // If 3+ matching symbols found and symbol has a payout
+        if (count >= 3 && this.paytable[firstSymbol]) {
+            const payout = this.paytable[firstSymbol][count - 3];
+            totalWin += payout;
+
+            results.push({
+                payline: i + 1,
+                symbol: firstSymbol,
+                count,
+                payout
+            });
+        }
     }
 
-    updateWinDisplay(totalWin, wins) {
-        if (totalWin === 0) {
+    this.updateWinDisplay(totalWin, results);
+}
+
+
+    updateWinDisplay(totalWin, results) {
+        if (results.length === 0) {
             this.winText.text = "No wins this spin";
             return;
         }
 
-        let winText = `Total wins: ${totalWin}\n`;
+        let display = `Total wins: ${totalWin}\n`;
 
-        wins.forEach(win => {
-            winText += `- payline ${win.payline}, ${win.symbol} x${win.count}, ${win.payout}\n`;
+        results.forEach(result => {
+            display += `- payline ${result.payline}, ${result.symbol} x${result.count}, ${result.payout}\n`;
         });
 
-        this.winText.text = winText;
+        this.winText.text = display.trim();
     }
+
 
 
     centerLoader() {
