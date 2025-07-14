@@ -7,7 +7,6 @@ A simple yet fully functional slot machine game built with **PIXI.js** and moder
 
 ## Table of Contents
 
-- [Demo](#demo)
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
@@ -19,10 +18,6 @@ A simple yet fully functional slot machine game built with **PIXI.js** and moder
 - [License](#license)
 
 ---
-
-## Demo
-
-*You can provide a hosted demo URL here if available.*
 
 ---
 
